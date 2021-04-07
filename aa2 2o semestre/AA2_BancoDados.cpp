@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 #include <fstream>
+#include <time.h>
 using namespace std;
 using std::ios;
 struct Data {
@@ -15,11 +16,16 @@ struct BancoDados {
 	float saldo;
 };
 enum Escolhas : int {IMPRIMIRCONTAS = 1, NOVACONTA};
-void ExportarDados(BancoDados cadastro, fstream& incluirContas) {
-	cout << "ID da conta: "; cin >> cadastro.id;
+void ExportarDados(BancoDados cadastro, fstream& incluirContas, vector<BancoDados> bancoDados) {
+	time_t ttime = time(0);
+	struct tm tempoAgr;
+	localtime_s(&tempoAgr, &ttime);
+	cadastro.data.dia = tempoAgr.tm_mday;
+	cadastro.data.mes = tempoAgr.tm_mon + 1;
+	cadastro.data.ano = tempoAgr.tm_year + 1900;
+	cadastro.id = bancoDados.at(bancoDados.size() - 1).id;
 	cout << "Tipo de conta: "; cin >> cadastro.tipo;
 	cout << "Nome do titular: "; cin >> cadastro.nome;
-	cout << "Data do cadastro: "; cin >> cadastro.data.dia >> cadastro.data.mes >> cadastro.data.ano;
 	cout << "Saldo da conta: "; cin >> cadastro.saldo;
 	incluirContas << cadastro.id << ", "
 		<< cadastro.tipo << ", "
@@ -27,7 +33,7 @@ void ExportarDados(BancoDados cadastro, fstream& incluirContas) {
 		<< cadastro.data.dia << "/ "
 		<< cadastro.data.mes << "/"
 		<< cadastro.data.ano << ", "
-		<< cadastro.saldo;
+		<< cadastro.saldo << "\n";
 }
 BancoDados IncluirContas(vector<BancoDados>& bancoDados, vector<string>& dados, fstream& arquivo, BancoDados cadastro) {
 	string dado;
@@ -82,7 +88,7 @@ int main() {
 	fstream arquivo, incluirContas;
 	arquivo.open("bancodados.csv", ios::in | ios::out | ios::app);
 	incluirContas.open("contasIncluir.csv", ios::out | ios::app);
-	BancoDados cadastro; 
+	BancoDados cadastro;
 	int escolha;
 	vector<BancoDados> bancoDados; vector<string> dados;
 	
@@ -104,11 +110,9 @@ int main() {
 		}
 		break;
 	case NOVACONTA:
-		ExportarDados(cadastro, incluirContas);
+		ExportarDados(cadastro, incluirContas, bancoDados);
 		break;
 	}
-	
-	
 
 	arquivo.close();
 	return 0;
