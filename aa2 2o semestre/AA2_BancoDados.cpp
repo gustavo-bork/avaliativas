@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include <windows.h>
 #include <fstream>
 #include <time.h>
 using namespace std;
@@ -19,7 +20,9 @@ struct BancoDados {
 time_t ttime = time(0);
 struct tm tempoAgr;
 string::size_type sz;
-enum Escolhas : int {IMPRIMIRCONTAS = 1, NOVACONTA};
+fstream arquivo;
+
+enum Escolhas : int {IMPRIMIRCONTAS = 1, NOVACONTA, SAIR};
 void ExportarDados(BancoDados cadastro, fstream& incluirContas, vector<BancoDados> bancoDados) {
 	string nome_temp;
 	localtime_s(&tempoAgr, &ttime);
@@ -32,15 +35,18 @@ void ExportarDados(BancoDados cadastro, fstream& incluirContas, vector<BancoDado
 	cout << "Saldo da conta: "; cin >> cadastro.saldo;
 	strcpy_s(cadastro.nome, nome_temp.c_str());
 	cout << setprecision(2) << fixed;
-	incluirContas << cadastro.id << ","
-		<< cadastro.tipo << ","
-		<< cadastro.nome << ","
+	incluirContas << cadastro.id << " "
+		<< cadastro.tipo << " "
+		<< cadastro.nome << " "
 		<< cadastro.data.dia << "/"
 		<< cadastro.data.mes << "/"
-		<< cadastro.data.ano << ","
+		<< cadastro.data.ano << " "
 		<< cadastro.saldo << "\n";
+	cout << "Conta exportada com sucesso!" << endl;
+	incluirContas.close();
 }
 void TaxaContaCorrente(vector<BancoDados> &bancoDados, fstream& taxaCorrente) {
+	
 	string dadoArquivo; vector<string> dadosArquivo;
 	vector<float> taxas;
 	while(getline(taxaCorrente, dadoArquivo)) {
@@ -52,6 +58,7 @@ void TaxaContaCorrente(vector<BancoDados> &bancoDados, fstream& taxaCorrente) {
 	for(int i = 0; i < bancoDados.size(); i++) {
 		bool msmDia = !((bancoDados[i].data.mes == tempoAgr.tm_mon + 1) && (bancoDados[i].data.ano == tempoAgr.tm_year + 1900));
 		if(bancoDados.at(i).tipo == 'C') {
+			auto saldoAntigo = bancoDados.at(i).saldo;
 			if(bancoDados.at(i).data.dia == tempoAgr.tm_mday && msmDia) {
 				if(bancoDados.at(i).saldo <= 1500) {
 					bancoDados.at(i).saldo -= taxas.at(0) * bancoDados.at(i).saldo;
@@ -68,6 +75,18 @@ void TaxaContaCorrente(vector<BancoDados> &bancoDados, fstream& taxaCorrente) {
 			}
 		}
 	}
+	arquivo.open("bancodados.csv", ios::out | ios::in | ios::app);
+	for(int i = 0; i < bancoDados.size(); i++) {
+		arquivo << bancoDados[i].id << ","
+			<< bancoDados[i].tipo << ","
+			<< bancoDados[i].nome << ","
+			<< bancoDados[i].data.dia << "/"
+			<< bancoDados[i].data.mes << "/"
+			<< bancoDados[i].data.ano << ","
+			<< bancoDados[i].saldo << "\n";
+	}
+	arquivo.close();
+	taxaCorrente.close();
 }
 void AtualizarSaldoPoupanca(vector<BancoDados> &bancoDados, fstream& taxaPoupanca) {
 	string taxa;
@@ -83,8 +102,10 @@ void AtualizarSaldoPoupanca(vector<BancoDados> &bancoDados, fstream& taxaPoupanc
 			}
 		}
 	}
+	taxaPoupanca.close();
 }
-BancoDados IncluirContas(vector<BancoDados>& bancoDados, vector<string>& dados, fstream& arquivo, BancoDados cadastro) {
+BancoDados IncluirContas(vector<BancoDados>& bancoDados, vector<string>& dados, BancoDados cadastro) {
+	arquivo.open("bancodados.csv", ios::in);
 	string dado;
 	while(getline(arquivo, dado)) {
 		stringstream ss(dado);
@@ -122,6 +143,7 @@ BancoDados IncluirContas(vector<BancoDados>& bancoDados, vector<string>& dados, 
 		fill(begin(cadastro.nome), end(cadastro.nome), 0);
 	}
 	for(int i = 0; i < bancoDados.size(); i++) return bancoDados[i];
+	arquivo.close();
 }
 void ListarContas(vector<BancoDados> bancoDados) {
 	cout << "ID Conta" << setw(10)
@@ -131,41 +153,56 @@ void ListarContas(vector<BancoDados> bancoDados) {
 		<< "Saldo\n";
 	cout << setprecision(2) << fixed;
 	for(int i = 0; i < bancoDados.size(); i++) {
-		cout << bancoDados.at(i).id << setw(11)
-			<< bancoDados.at(i).tipo << setw(24)
-			<< bancoDados.at(i).nome << setw(14)
-			<< bancoDados.at(i).data.dia << "/"
-			<< bancoDados.at(i).data.mes << "/"
-			<< bancoDados.at(i).data.ano << setw(18)
-			<< bancoDados.at(i).saldo << "\n";
+		cout << left << setw(14) <<
+			bancoDados[i].id << left << setw(8)
+			<< bancoDados[i].tipo << left << setw(30)
+			<< bancoDados[i].nome 
+			<< bancoDados[i].data.dia << "/"
+			<< bancoDados[i].data.mes << "/" << left << setw(16)
+			<< bancoDados[i].data.ano 
+			<< bancoDados[i].saldo << "\n";
 	}
+	cout << "\n\n";
 }
 int main() {
-	fstream arquivo, incluirContas, taxaPoupanca, taxaContaCorrente;
-	arquivo.open("bancodados.csv", ios::in | ios::out | ios::app);
-	incluirContas.open("contasIncluir.csv", ios::out | ios::app);
+	fstream incluirContas, taxaPoupanca, taxaContaCorrente;
+	incluirContas.open("contasIncluir.dat", ios::out | ios::app);
 	taxaPoupanca.open("saldoatualizar.txt", ios::in);
 	taxaContaCorrente.open("tarifas.txt", ios::in);
 	BancoDados cadastro;
 	int escolha;
 	vector<BancoDados> bancoDados; vector<string> dados;
-	
-	IncluirContas(bancoDados, dados, arquivo, cadastro);
+	bool x = true;
+	IncluirContas(bancoDados, dados, cadastro);
 	AtualizarSaldoPoupanca(bancoDados, taxaPoupanca);
 	TaxaContaCorrente(bancoDados, taxaContaCorrente);
-	cout << "Menu\n"
-		<< "1 - Listar as contas\n"
-		<< "2 - Fazer uma nova conta\n" 
-		<< "Opcao: "; cin >> escolha;
-	switch(escolha) {
-	case IMPRIMIRCONTAS: 
-		ListarContas(bancoDados);
-		break;
-	case NOVACONTA:
-		ExportarDados(cadastro, incluirContas, bancoDados);
-		break;
+	while(x) {
+		cout << "Menu\n"
+			<< "1 - Listar as contas\n"
+			<< "2 - Fazer uma nova conta\n" 
+			<< "3 - Sair\n"
+			<< "Opcao: "; cin >> escolha; cout << "\n";
+		switch(escolha) {
+		case IMPRIMIRCONTAS:
+			ListarContas(bancoDados);
+			break;
+		case NOVACONTA:
+			ExportarDados(cadastro, incluirContas, bancoDados);
+			Sleep(1000);
+			system("cls");
+			break;
+		case SAIR:
+			x = false;
+			break;
+		default:
+			cout << "Erro: Opcao invalida\n" << endl;
+			Sleep(2000);
+			system("cls");
+			break;
+		}
+		
 	}
-
+	
 	arquivo.close();
 	return 0;
 }
